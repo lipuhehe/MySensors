@@ -1,27 +1,27 @@
-package com.snnu.mysensors;
+package com.snnu.mysensors.service;
 
 import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.Spinner;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
@@ -32,27 +32,37 @@ import com.baidu.location.LocationClientOption;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
-import com.loopj.android.http.SyncHttpClient;
 import com.qweather.sdk.bean.base.Code;
 import com.qweather.sdk.bean.base.Lang;
 import com.qweather.sdk.bean.base.Unit;
 import com.qweather.sdk.bean.weather.WeatherNowBean;
 import com.qweather.sdk.view.QWeather;
-
-import java.util.Date;
+import com.snnu.mysensors.db.DBHelper;
+import com.snnu.mysensors.utils.SystemUtil;
 
 import cz.msebera.android.httpclient.Header;
 
 public class LongRunningService extends Service implements SensorEventListener{
 
-    AlertDialog.Builder builder = null;
+    private DBHelper dbHelper;
+
+    private AlertDialog.Builder builder = null;
+    private LocationManager lm ;
+
+    private SharedPreferences sp;
+    private SharedPreferences.Editor editor;
+
     private EditText edit = null;
     private Spinner spinner = null;
-    private String address;
+    private String oldAddress=null;
+    private String newAddress=null;
+    private String address=null;
     private Handler handler;
 
     private SensorManager sensorManager;
+    //阿里云地址
     private static final String SERVICE_URL = "http://120.26.199.60:8080/saveSensorData";
+    //本机地址
     //private static final String SERVICE_URL = "http://10.150.104.149:8080/saveSensorData";
     private RequestParams params = new RequestParams();
     private AsyncHttpClient client = new AsyncHttpClient();
@@ -112,42 +122,25 @@ public class LongRunningService extends Service implements SensorEventListener{
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        sp = getSharedPreferences("addressInfo", Context.MODE_PRIVATE);
+        editor = sp.edit();
+        if(intent!=null){
+            newAddress = intent.getExtras().getString("address");
+            if(null!= newAddress){
+                if(newAddress!=address){
+                    address = newAddress;
+                }
+            }
+            editor.putString("address",address);
+            editor.commit();
+        }
         getWeather();
         phone_model = SystemUtil.getDeviceBrand();
-        //handler = new Handler(Looper.getMainLooper());
-        edit = new EditText(getApplicationContext());
-        //spinner = new Spinner(getApplicationContext());
-        //String [] addresses = this.getResources().getStringArray(R.array.address);
-        edit.setHint("如：教室、图书馆、操场、宿舍");
-        builder = new AlertDialog.Builder(getApplicationContext())
-                .setTitle("请输入你的所在地点")
-                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        address = edit.getText().toString();
-                        startTimeTask(address);
-                    }
-                })
-                .setView(edit);
-        AlertDialog dialog = builder.create();
-        //8.0系统加强后台管理，禁止在其他应用和窗口弹提醒弹窗，如果要弹，必须使用TYPE_APPLICATION_OVERLAY，否则弹不出
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            dialog.getWindow().setType((WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY));
-        }else {
-            dialog.getWindow().setType((WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
-        }
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.show();
-       /* handler.post(new Runnable() {
-            @Override
-            public void run() {
-                showDialog("请输入你的所在地点","",edit);
-            }
-        });*/
+        startTimeTask();
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public void startTimeTask(String address){
+    public void startTimeTask(){
         //声明LocationClient类
         locationClient = new LocationClient(getApplicationContext());
         //注册监听函数
@@ -234,7 +227,7 @@ public class LongRunningService extends Service implements SensorEventListener{
         params.put("humidity_data",humidity_data);
         params.put("gyroscope_data",gyroscope_data);
         params.put("step_counter_data",step_counter_data);
-        params.put("address",address);
+        params.put("address",sp.getString("address",null));
         params.put("weather",weather);
         params.put("altitude",altitude);
         params.put("floor",floor);

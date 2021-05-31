@@ -1,4 +1,4 @@
-package com.snnu.mysensors;
+package com.snnu.mysensors.activaty;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -7,38 +7,49 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
-import android.os.Build;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
-import android.widget.EditText;
+import android.provider.Settings;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.baidu.location.LocationClient;
-import com.baidu.location.LocationClientOption;
-import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.RequestParams;
 import com.qweather.sdk.view.HeConfig;
+import com.snnu.mysensors.R;
+import com.snnu.mysensors.db.DBHelper;
+import com.snnu.mysensors.service.LongRunningService;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private SensorManager sm;
     private TextView txt_show;
+    private Button location;
     private final int REQUEST_GPS = 1;
+    private AlertDialog dialog = null;
+    private AlertDialog.Builder builder = null;
+    private final String[] addresses = {"教室","实验室","宿舍","图书馆","食堂","体育馆","户外","超市","体育场"};
+    private String address = "";
+    private DBHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         HeConfig.init("HE2105120908221467", "8b6e6192a124431689bd75e13623779d");
+        //初始化数据库
+        dbHelper = new DBHelper(this);
         //切换至开发版服务
         HeConfig.switchToDevService();
         //检查权限
@@ -59,15 +70,18 @@ public class MainActivity extends AppCompatActivity {
             String[] permissions = permissionList.toArray(new String[permissionList.size()]);
             ActivityCompat.requestPermissions(MainActivity.this,permissions,1);
         }else{
+            initGPS();
+            isConn(getApplicationContext());
             startMyService();
         }
     }
-
 
     public void startMyService(){
         //获取传感器管理器
         sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         txt_show = findViewById(R.id.txt_show);
+        location = findViewById(R.id.location);
+        location.setOnClickListener(this);
         List<Sensor> allSensors = sm.getSensorList(Sensor.TYPE_ALL);
         StringBuilder sb = new StringBuilder();
         sb.append("此手机有"+allSensors.size()+"个传感器，分别有：\n\n");
@@ -164,8 +178,6 @@ public class MainActivity extends AppCompatActivity {
             sb.append("设备名称："+s.getName()+"\n 设备版本："+s.getVersion()+"\n 供应商："+s.getVendor()+"\n\n");
         }
         txt_show.setText(sb.toString());
-        Intent intent = new Intent(getApplicationContext(),LongRunningService.class);
-        startService(intent);
     }
 
     @Override
@@ -190,4 +202,118 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    private void initGPS() {
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        // 判断GPS模块是否开启，如果没有则开启
+        if (!locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)) {
+            Toast.makeText(MainActivity.this, "请打开GPS", Toast.LENGTH_SHORT).show();
+            final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+            dialog.setTitle("请打开GPS连接");
+            dialog.setMessage("为了方便您使用本软件，请先打开GPS");
+            dialog.setPositiveButton("设置",  new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface arg0, int arg1) {
+                    // 转到手机设置界面，用户设置GPS
+                    Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    Toast.makeText(MainActivity.this, "打开后直接点击返回键即可，若不打开返回下次将再次出现", Toast.LENGTH_SHORT).show();
+                    startActivityForResult(intent, 0); // 设置完成后返回到原来的界面
+                }
+            });
+            dialog.setNeutralButton("取消", new android.content.DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface arg0, int arg1) {
+                    arg0.dismiss();
+                }
+            });
+            dialog.show();
+        }
+    }
+
+    /**
+     * 判断网络连接是否已开
+     * true 已打开  false 未打开
+     */
+    public static boolean isConn(Context context) {
+        if (context != null) {
+            ConnectivityManager mConnectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo mNetworkInfo = mConnectivityManager.getActiveNetworkInfo();
+            if (mNetworkInfo != null) {
+                return mNetworkInfo.isAvailable();
+            }
+            searchNetwork(context); //弹出提示对话框
+        }
+        return false;
+    }
+
+    /**
+     * 判断网络是否连接成功，连接成功不做任何操作
+     * 未连接则弹出对话框提示用户设置网络连接
+     */
+    public static void searchNetwork(final Context context) {
+        //提示对话框
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("网络设置提示").setMessage("网络连接不可用,是否进行设置?").setPositiveButton("设置", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = null;
+                //判断手机系统的版本  即API大于10 就是3.0或以上版本
+                if (android.os.Build.VERSION.SDK_INT > 10) {
+                    intent = new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS);
+                } else {
+                    intent = new Intent();
+                    ComponentName component = new ComponentName("com.android.settings", "com.android.settings.WirelessSettings");
+                    intent.setComponent(component);
+                    intent.setAction("android.intent.action.VIEW");
+                }
+                context.startActivity(intent);
+            }
+        }).setNegativeButton("取消", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        }).show();
+    }
+
+    public void intendForService(){
+        Intent intent = new Intent(getApplicationContext(), LongRunningService.class);
+        startService(intent);
+    }
+
+    @Override
+    public void onClick(View view) {
+        if(view.getId()==R.id.location){
+            //Toast.makeText(MainActivity.this, "点击了巴腾", Toast.LENGTH_SHORT).show();
+            builder = new AlertDialog.Builder(MainActivity.this).setTitle("请选择当前所在位置")
+                    .setSingleChoiceItems(addresses, -1, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            address = addresses[i];
+                        }
+                    })
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            if(!address.equals("")){
+                                Intent intent = new Intent(MainActivity.this,LongRunningService.class);
+                                intent.putExtra("address",address);
+                                startService(intent);
+                            }else{
+                                Toast.makeText(MainActivity.this, "选择选项后才能发送!", Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    })
+                    .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                        }
+                    });
+            AlertDialog dialog = builder.create();
+            dialog.setCanceledOnTouchOutside(false);
+            dialog.show();
+        }
+    }
 }

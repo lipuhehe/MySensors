@@ -1,7 +1,8 @@
-package com.snnu.mysensors;
+package com.snnu.mysensors.utils;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.snnu.mysensors.model.SensorData;
 
 import java.lang.reflect.Type;
 import java.util.List;
