@@ -25,6 +25,7 @@ import android.widget.Spinner;
 
 import androidx.annotation.Nullable;
 
+import com.alibaba.fastjson.JSON;
 import com.baidu.location.BDAbstractLocationListener;
 import com.baidu.location.BDLocation;
 import com.baidu.location.LocationClient;
@@ -38,11 +39,30 @@ import com.qweather.sdk.bean.base.Unit;
 import com.qweather.sdk.bean.weather.WeatherNowBean;
 import com.qweather.sdk.view.QWeather;
 import com.snnu.mysensors.db.DBHelper;
+import com.snnu.mysensors.model.SensorData;
 import com.snnu.mysensors.utils.SystemUtil;
+import com.snnu.mysensors.utils.TimeUtils;
+
+import java.io.IOException;
+import java.sql.Time;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import cz.msebera.android.httpclient.Header;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class LongRunningService extends Service implements SensorEventListener{
+
+    private static final String TAG = "send date to server";
+    public static final MediaType mediaType = MediaType.parse("application/json;charset=utf-8");
 
     private DBHelper dbHelper;
 
@@ -61,11 +81,12 @@ public class LongRunningService extends Service implements SensorEventListener{
 
     private SensorManager sensorManager;
     //阿里云地址
-    private static final String SERVICE_URL = "http://120.26.199.60:8080/saveSensorData";
+    private static final String SERVICE_URL = "http://120.26.199.60:8080/saveSensorDataList";
     //本机地址
-    //private static final String SERVICE_URL = "http://10.150.104.149:8080/saveSensorData";
-    private RequestParams params = new RequestParams();
-    private AsyncHttpClient client = new AsyncHttpClient();
+    //private static final String SERVICE_URL = "http://10.150.98.196:8080/saveSensorDataList";
+    private RequestBody requestBody;
+    private OkHttpClient client ;
+    private Request request;
 
     private LocationClient locationClient;
     private LocationClientOption option;
@@ -111,6 +132,7 @@ public class LongRunningService extends Service implements SensorEventListener{
     private float gyroscope_data = 0;
     //计步传感器值
     private float step_counter_data = 0;
+    private String create_time;
 
     private boolean selected = false;
 
@@ -134,7 +156,6 @@ public class LongRunningService extends Service implements SensorEventListener{
             editor.putString("address",address);
             editor.commit();
         }
-        getWeather();
         phone_model = SystemUtil.getDeviceBrand();
         startTimeTask();
         return super.onStartCommand(intent, flags, startId);
@@ -190,6 +211,8 @@ public class LongRunningService extends Service implements SensorEventListener{
         //调用LocationClient的start()方法，便可发起定位请求
         locationClient.start();
 
+        getWeather();
+
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT),SensorManager.SENSOR_DELAY_NORMAL);
@@ -203,7 +226,72 @@ public class LongRunningService extends Service implements SensorEventListener{
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),SensorManager.SENSOR_DELAY_NORMAL);
-        params.put("accelerometer_datax",accelerometer_datax);
+        List<SensorData> sensorDataList = new ArrayList<>();
+        //看本地有没有上次没有发送的数据
+        dbHelper = new DBHelper(getApplicationContext());
+        sensorDataList = dbHelper.getAllSensorData();
+        SensorData sensorData = new SensorData();
+        sensorData.setAccelerometer_datax(accelerometer_datax);
+        sensorData.setAccelerometer_datay(accelerometer_datay);
+        sensorData.setAccelerometer_dataz(accelerometer_dataz);
+        sensorData.setLatitude(latitude);
+        sensorData.setLongitude(longitude);
+        sensorData.setLight_data(light_data);
+        sensorData.setTemperature_data(temperature_data);
+        sensorData.setMagnetic_dataz(magnetic_dataz);
+        sensorData.setMagnetic_datay(magnetic_datay);
+        sensorData.setMagnetic_datax(magnetic_datax);
+        sensorData.setPressure_data(pressure_data);
+        sensorData.setProximity_data(proximity_data);
+        sensorData.setGravity_dataz(gravity_dataz);
+        sensorData.setGravity_datay(gravity_datay);
+        sensorData.setGravity_datax(gravity_datax);
+        sensorData.setLinear_acceleration_datax(linear_acceleration_datax);
+        sensorData.setLinear_acceleration_datay(linear_acceleration_datay);
+        sensorData.setLinear_acceleration_dataz(linear_acceleration_dataz);
+        sensorData.setRotation_vector_datax(rotation_vector_datax);
+        sensorData.setRotation_vector_datay(rotation_vector_datay);
+        sensorData.setRotation_vector_dataz(rotation_vector_dataz);
+        sensorData.setHumidity_data(humidity_data);
+        sensorData.setGyroscope_data(gyroscope_data);
+        sensorData.setStep_counter_data(step_counter_data);
+        sensorData.setAddress(address);
+        sensorData.setWeather(weather);
+        sensorData.setAltitude(altitude);
+        sensorData.setFloor(floor);
+        sensorData.setPhone_model(phone_model);
+        create_time = TimeUtils.getTime();
+        sensorData.setCreate_time(create_time);
+        sensorDataList.add(sensorData);
+        client = new OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)//设置连接超时时间
+                .readTimeout(20, TimeUnit.SECONDS)//设置读取超时时间
+                .build();
+        requestBody = RequestBody.create(mediaType, JSON.toJSONString(sensorDataList));
+        request = new Request.Builder()
+                .url(SERVICE_URL)
+                .post(requestBody)
+                .addHeader("Content-Type", "application/json")
+                .build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                dbHelper.insertSensorData(sensorData);
+                Log.d(TAG, "onFailure1: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if(response.isSuccessful()){
+                    dbHelper.deleteALLSensorData();
+                    Log.d(TAG, "onSuccess: " + response);
+                }else{
+                    dbHelper.insertSensorData(sensorData);
+                    Log.d(TAG, "onFailure2: " + response);
+                }
+            }
+        });
+        /*params.put("accelerometer_datax",accelerometer_datax);
         params.put("accelerometer_datay",accelerometer_datay);
         params.put("accelerometer_dataz",accelerometer_dataz);
         params.put("latitude",latitude);
@@ -242,7 +330,7 @@ public class LongRunningService extends Service implements SensorEventListener{
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
                     Log.i("数据发送","error code:",error);
             }
-        });
+        });*/
         AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);
         int anHour = 60*1000;
         long triggerAtTime = SystemClock.elapsedRealtime() + anHour;

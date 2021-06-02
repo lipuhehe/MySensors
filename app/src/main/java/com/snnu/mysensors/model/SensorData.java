@@ -92,7 +92,7 @@ public class SensorData implements Serializable {
 
     private String floor;
 
-    private Date create_time;
+    private String create_time;
 
     private String phone_model;
 
@@ -103,7 +103,7 @@ public class SensorData implements Serializable {
                       float temperature_data, float magnetic_datax, float magnetic_datay, float magnetic_dataz, float pressure_data, float proximity_data, float gravity_datax,
                       float gravity_datay, float gravity_dataz, float linear_acceleration_datax, float linear_acceleration_datay, float linear_acceleration_dataz,
                       float rotation_vector_datax, float rotation_vector_datay, float rotation_vector_dataz, float humidity_data, float gyroscope_data,
-                      float step_counter_data, String address,String weather,String floor,double altitude,Date create_time,String phone_model) {
+                      float step_counter_data, String address,String weather,String floor,double altitude,String create_time,String phone_model) {
         this.accelerometer_datax = accelerometer_datax;
         this.accelerometer_datay = accelerometer_datay;
         this.accelerometer_dataz = accelerometer_dataz;
@@ -367,11 +367,11 @@ public class SensorData implements Serializable {
         this.floor = floor;
     }
 
-    public Date getCreate_time() {
+    public String getCreate_time() {
         return create_time;
     }
 
-    public void setCreate_time(Date create_time) {
+    public void setCreate_time(String create_time) {
         this.create_time = create_time;
     }
 

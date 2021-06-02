@@ -34,7 +34,7 @@ public class DBHelper extends SQLiteOpenHelper{
                 "accelerometer_dataz float  DEFAULT NULL," +
                 "address varchar(255)  DEFAULT NULL," +
                 "altitude double  DEFAULT NULL," +
-                "create_time TimeStamp DEFAULT (datetime('now', 'localtime'))," +
+                "create_time varchar(255) DEFAULT NULL," +
                 "floor varchar(255)   DEFAULT NULL," +
                 "gravity_datax float  DEFAULT NULL," +
                 "gravity_datay float  DEFAULT NULL," +
@@ -100,6 +100,7 @@ public class DBHelper extends SQLiteOpenHelper{
         values.put("weather",sensorData.getWeather());
         values.put("altitude",sensorData.getAltitude());
         values.put("floor",sensorData.getFloor());
+        values.put("create_time",sensorData.getCreate_time());
         values.put("phone_model",sensorData.getPhone_model());
         long id = db.insert("sensor_data",null,values);
         db.close();

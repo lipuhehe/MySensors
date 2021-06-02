@@ -14,6 +14,8 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        lintOptions { checkReleaseBuilds false }
     }
 
     buildTypes {
@@ -38,16 +40,15 @@ dependencies {
     implementation files('libs\\android-smart-image-view-1.0.0.jar')
     implementation files('libs\\httpcore-4.4.4.jar')
     implementation files('libs\\QWeather_Public_Android_V4.4.jar')
+    implementation files('libs\\fastjson-1.2.75.jar')
+    implementation files('libs\\okhttp-3.14.2.jar')
+    implementation files('libs\\okio-1.14.0.jar')
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 
-    /*implementation files('libs\\android-smart-image-view-1.0.0.jar')
-    implementation files('libs\\android-async-http-1.4.8.jar')
-    implementation files('libs\\httpcore-4.4.4.jar')
-    implementation files('libs\\gson-2.6.2.jar')*/
     implementation('com.loopj.android:android-async-http:1.4.9')
+    debugImplementation 'com.idescout.sql:sqlscout-server:4.1'
+    releaseImplementation 'com.idescout.sql:sqlscout-server-noop:4.1'
     //简单天气管理工具
-    compile 'com.squareup.okhttp3:okhttp:3.9.0'
-
 }

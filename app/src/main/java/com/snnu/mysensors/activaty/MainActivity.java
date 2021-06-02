@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ActivityCompat.requestPermissions(MainActivity.this,permissions,1);
         }else{
             initGPS();
-            isConn(getApplicationContext());
+            isConn(MainActivity.this);
             startMyService();
         }
     }
