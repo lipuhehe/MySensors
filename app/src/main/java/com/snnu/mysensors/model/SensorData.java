@@ -35,6 +35,8 @@ public class SensorData implements Serializable {
     public static final String ALTITUDE = "altitude";
     public static final String FLOOR = "floor";
     public static final String PHONE_MODEL = "phone_model";
+    public static final String DEVICE_BRAND = "device_brand";
+    public static final String ANDROID_VERSION = "android_version";
 
 
 
@@ -96,6 +98,10 @@ public class SensorData implements Serializable {
 
     private String phone_model;
 
+    private String device_brand;
+
+    private String android_version;
+
     public SensorData() {
     }
 
@@ -103,7 +109,7 @@ public class SensorData implements Serializable {
                       float temperature_data, float magnetic_datax, float magnetic_datay, float magnetic_dataz, float pressure_data, float proximity_data, float gravity_datax,
                       float gravity_datay, float gravity_dataz, float linear_acceleration_datax, float linear_acceleration_datay, float linear_acceleration_dataz,
                       float rotation_vector_datax, float rotation_vector_datay, float rotation_vector_dataz, float humidity_data, float gyroscope_data,
-                      float step_counter_data, String address,String weather,String floor,double altitude,String create_time,String phone_model) {
+                      float step_counter_data, String address,String weather,String floor,double altitude,String create_time,String phone_model,String device_brand,String android_version) {
         this.accelerometer_datax = accelerometer_datax;
         this.accelerometer_datay = accelerometer_datay;
         this.accelerometer_dataz = accelerometer_dataz;
@@ -133,6 +139,8 @@ public class SensorData implements Serializable {
         this.floor = floor;
         this.altitude = altitude;
         this.phone_model = phone_model;
+        this.device_brand = device_brand;
+        this.android_version = android_version;
     }
 
     public Integer getId() {
@@ -381,5 +389,21 @@ public class SensorData implements Serializable {
 
     public void setPhone_model(String phone_model) {
         this.phone_model = phone_model;
+    }
+
+    public String getDevice_brand() {
+        return device_brand;
+    }
+
+    public void setDevice_brand(String device_brand) {
+        this.device_brand = device_brand;
+    }
+
+    public String getAndroid_version() {
+        return android_version;
+    }
+
+    public void setAndroid_version(String android_version) {
+        this.android_version = android_version;
     }
 }

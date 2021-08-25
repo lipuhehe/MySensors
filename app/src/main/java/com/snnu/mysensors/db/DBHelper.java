@@ -51,6 +51,8 @@ public class DBHelper extends SQLiteOpenHelper{
                 "magnetic_datay float  DEFAULT NULL," +
                 "magnetic_dataz float  DEFAULT NULL," +
                 "phone_model varchar(255)  DEFAULT NULL," +
+                "device_brand varchar(255)  DEFAULT NULL," +
+                "android_version varchar(255)  DEFAULT NULL," +
                 "pressure_data float  DEFAULT NULL," +
                 "proximity_data float  DEFAULT NULL," +
                 "rotation_vector_datax float  DEFAULT NULL," +
@@ -102,6 +104,8 @@ public class DBHelper extends SQLiteOpenHelper{
         values.put("floor",sensorData.getFloor());
         values.put("create_time",sensorData.getCreate_time());
         values.put("phone_model",sensorData.getPhone_model());
+        values.put("device_brand",sensorData.getDevice_brand());
+        values.put("android_version",sensorData.getAndroid_version());
         long id = db.insert("sensor_data",null,values);
         db.close();
         return id;
@@ -143,6 +147,8 @@ public class DBHelper extends SQLiteOpenHelper{
                sensorData.setWeather(cursor.getString(cursor.getColumnIndex(SensorData.WEATHER)));
                sensorData.setFloor(cursor.getString(cursor.getColumnIndex(SensorData.FLOOR)));
                sensorData.setPhone_model(cursor.getString(cursor.getColumnIndex(SensorData.PHONE_MODEL)));
+               sensorData.setDevice_brand(cursor.getString(cursor.getColumnIndex(SensorData.DEVICE_BRAND)));
+               sensorData.setAndroid_version(cursor.getString(cursor.getColumnIndex(SensorData.ANDROID_VERSION)));
                sensorDataList.add(sensorData);
            }
         }

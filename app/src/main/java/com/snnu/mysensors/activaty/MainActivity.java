@@ -17,10 +17,13 @@ import android.hardware.SensorManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private AlertDialog.Builder builder = null;
     private final String[] addresses = {"教室","实验室","宿舍","图书馆","食堂","体育馆","户外","超市","体育场"};
     private String address = "";
+    private String floor = "";
     private DBHelper dbHelper;
 
     @Override
@@ -48,6 +52,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         HeConfig.init("HE2105120908221467", "8b6e6192a124431689bd75e13623779d");
+
+        if (!this.isTaskRoot()) {
+            Intent mainIntent = getIntent();
+            String action = mainIntent.getAction();
+            if (mainIntent.hasCategory(Intent.CATEGORY_LAUNCHER) && Intent.ACTION_MAIN.equals(action)) {
+                finish();
+                return;
+            }
+        }
+
         //初始化数据库
         dbHelper = new DBHelper(this);
         //切换至开发版服务
@@ -74,6 +88,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             isConn(MainActivity.this);
             startMyService();
         }
+    }
+
+    @Override
+    public boolean moveTaskToBack(boolean nonRoot) {
+        return super.moveTaskToBack(nonRoot);
     }
 
     public void startMyService(){
@@ -297,9 +316,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             if(!address.equals("")){
-                                Intent intent = new Intent(MainActivity.this,LongRunningService.class);
-                                intent.putExtra("address",address);
-                                startService(intent);
+                                EditText editText = new EditText(MainActivity.this);
+                                editText.setHint("填写数字即可");
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle("请填写楼层")
+                                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialogInterface, int i) {
+                                                floor = editText.getText().toString();
+                                                Intent intent = new Intent(MainActivity.this,LongRunningService.class);
+                                                intent.putExtra("address",address);
+                                                intent.putExtra("floor",floor);
+                                                startService(intent);
+                                            }
+                                        })
+                                        .setView(editText);
+                                AlertDialog dialog =builder.create();
+                                dialog.setCanceledOnTouchOutside(false);
+                                dialog.show();
                             }else{
                                 Toast.makeText(MainActivity.this, "选择选项后才能发送!", Toast.LENGTH_LONG).show();
                             }
@@ -316,4 +350,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             dialog.show();
         }
     }
+
+
+
 }

@@ -16,12 +16,14 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
@@ -61,7 +63,7 @@ import okhttp3.ResponseBody;
 
 public class LongRunningService extends Service implements SensorEventListener{
 
-    private static final String TAG = "send date to server";
+    private static final String TAG = "发送数据到服务器";
     public static final MediaType mediaType = MediaType.parse("application/json;charset=utf-8");
 
     private DBHelper dbHelper;
@@ -76,7 +78,7 @@ public class LongRunningService extends Service implements SensorEventListener{
     private Spinner spinner = null;
     private String oldAddress=null;
     private String newAddress=null;
-    private String address=null;
+    private String address="";
     private Handler handler;
 
     private SensorManager sensorManager;
@@ -99,9 +101,12 @@ public class LongRunningService extends Service implements SensorEventListener{
     private double latitude = 0;    //获取纬度信息
     private double longitude = 0;   //获取纬度信息
     private double altitude = 0;    //获取海拔高度
-    private String floor;           //获取楼层
+    private String floor = "";           //获取楼层
+    private String newFloor;
     private String weather;
     private String  phone_model;    //手机型号
+    private String  device_brand;   //手机厂商
+    private String android_version;     //安卓版本号
     //光传感器值
     private float light_data = 0;
     //温度传感器值
@@ -147,16 +152,24 @@ public class LongRunningService extends Service implements SensorEventListener{
         sp = getSharedPreferences("addressInfo", Context.MODE_PRIVATE);
         editor = sp.edit();
         if(intent!=null){
+            newFloor = intent.getExtras().getString("floor");
             newAddress = intent.getExtras().getString("address");
             if(null!= newAddress){
-                if(newAddress!=address){
+                if(!newAddress.equals(address)){
                     address = newAddress;
                 }
+                floor = newFloor;
+
+                editor.putString("address",address);
+                editor.putString("floor",floor);
+                editor.commit();
             }
-            editor.putString("address",address);
-            editor.commit();
+
         }
-        phone_model = SystemUtil.getDeviceBrand();
+        device_brand = SystemUtil.getDeviceBrand();
+        phone_model = SystemUtil.getSystemModel();
+        android_version = SystemUtil.getSystemVersion();
+
         startTimeTask();
         return super.onStartCommand(intent, flags, startId);
     }
@@ -255,17 +268,25 @@ public class LongRunningService extends Service implements SensorEventListener{
         sensorData.setHumidity_data(humidity_data);
         sensorData.setGyroscope_data(gyroscope_data);
         sensorData.setStep_counter_data(step_counter_data);
+        if("".equals(address)){
+            address=sp.getString("address","");
+        }
         sensorData.setAddress(address);
         sensorData.setWeather(weather);
         sensorData.setAltitude(altitude);
+        if("".equals(floor)){
+            floor=sp.getString("floor","");
+        }
         sensorData.setFloor(floor);
         sensorData.setPhone_model(phone_model);
+        sensorData.setDevice_brand(device_brand);
+        sensorData.setAndroid_version(android_version);
         create_time = TimeUtils.getTime();
         sensorData.setCreate_time(create_time);
         sensorDataList.add(sensorData);
         client = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)//设置连接超时时间
-                .readTimeout(20, TimeUnit.SECONDS)//设置读取超时时间
+                .connectTimeout(10, TimeUnit.SECONDS)       //设置连接超时时间
+                .readTimeout(20, TimeUnit.SECONDS)      //设置读取超时时间
                 .build();
         requestBody = RequestBody.create(mediaType, JSON.toJSONString(sensorDataList));
         request = new Request.Builder()
@@ -277,17 +298,17 @@ public class LongRunningService extends Service implements SensorEventListener{
             @Override
             public void onFailure(Call call, IOException e) {
                 dbHelper.insertSensorData(sensorData);
-                Log.d(TAG, "onFailure1: " + e.getMessage());
+                Log.d(TAG, "失败1: " + e.getMessage());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if(response.isSuccessful()){
                     dbHelper.deleteALLSensorData();
-                    Log.d(TAG, "onSuccess: " + response);
+                    Log.d(TAG, "成功: " + response);
                 }else{
                     dbHelper.insertSensorData(sensorData);
-                    Log.d(TAG, "onFailure2: " + response);
+                    Log.d(TAG, "失败2: " + response);
                 }
             }
         });
@@ -332,11 +353,19 @@ public class LongRunningService extends Service implements SensorEventListener{
             }
         });*/
         AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);
-        int anHour = 60*1000;
+        int anHour = 2*1000;       //每2秒发送一次数据
         long triggerAtTime = SystemClock.elapsedRealtime() + anHour;
         Intent i = new Intent(this,LongRunningService.class);
-        PendingIntent pi = PendingIntent.getService(this,0,i,0);
-        manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime,pi);
+        PendingIntent pi = PendingIntent.getService(this,0,i,PendingIntent.FLAG_UPDATE_CURRENT);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {   // 6.0
+            manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtTime, pi);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {       //  4.4
+            manager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime, pi);
+        } else {
+            manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime, pi);
+        }
+        //manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime,pi);
     }
 
     @Override
@@ -419,7 +448,7 @@ public class LongRunningService extends Service implements SensorEventListener{
                 // 当前支持高精度室内定位
                 String buildingID = bdLocation.getBuildingID();// 百度内部建筑物ID
                 String buildingName = bdLocation.getBuildingName();// 百度内部建筑物缩写
-                floor = bdLocation.getFloor();// 室内定位的楼层信息，如 f1,f2,b1,b2
+                //floor = bdLocation.getFloor();// 室内定位的楼层信息，如 f1,f2,b1,b2
                 locationClient.startIndoorMode();// 开启室内定位模式（重复调用也没问题），开启后，定位SDK会融合各种定位信息（GPS,WI-FI，蓝牙，传感器等）连续平滑的输出定位结果；
             }
         }
@@ -467,7 +496,7 @@ public class LongRunningService extends Service implements SensorEventListener{
             @Override
             public void onError(Throwable throwable) {
                 Log.i("和风天气", "getWeather onError：" + throwable);
-                weather="获取天气失败";
+                weather="999";
             }
 
             @Override
@@ -486,5 +515,29 @@ public class LongRunningService extends Service implements SensorEventListener{
         });
     }
 
+    @Override
+    public void onStart(Intent intent,int startId)
+    {
+        super.onStart(intent, startId);
+        handler=new Handler(Looper.getMainLooper());
+        handler.post(new Runnable(){
+            public void run(){
+                Toast.makeText(getApplicationContext(), "Service is on!", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+
+    @Override
+    public void onDestroy() {
+        Log.i("Service", "停止工作");
+        super.onDestroy();
+        handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            public void run() {
+                Toast.makeText(getApplicationContext(), "Service is off!", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
 
 }

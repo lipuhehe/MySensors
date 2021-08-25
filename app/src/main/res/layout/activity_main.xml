@@ -28,12 +28,6 @@
             android:text="发送位置"
             android:id="@+id/location"
             android:background="@android:color/transparent"/>
-       <!-- <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="发送位置"
-            android:id="@+id/location2"
-            android:layout_marginLeft="50dp"/>-->
 
     </LinearLayout>
 
