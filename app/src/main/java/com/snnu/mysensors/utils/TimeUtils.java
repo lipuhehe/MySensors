@@ -11,4 +11,5 @@ public class TimeUtils {
         String currentTime = format.format(current);
         return currentTime;
     }
+
 }

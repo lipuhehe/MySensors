@@ -45,10 +45,14 @@ import com.snnu.mysensors.model.SensorData;
 import com.snnu.mysensors.utils.SystemUtil;
 import com.snnu.mysensors.utils.TimeUtils;
 
+import java.io.Console;
 import java.io.IOException;
 import java.sql.Time;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import cz.msebera.android.httpclient.Header;
@@ -139,6 +143,17 @@ public class LongRunningService extends Service implements SensorEventListener{
     private float step_counter_data = 0;
     private String create_time;
 
+    private Map<Integer, String> sensorTypes = new HashMap<>();
+    private Map<Integer,String> newSensorTypes = new HashMap<>();
+
+    private Map<String,Object> TransSensorData = new HashMap<>();
+
+    private Map<String,Object> sensorData = new HashMap<>();
+
+    private boolean flag = false;
+
+    private Float[]  values;
+
     private boolean selected = false;
 
     @Nullable
@@ -154,6 +169,20 @@ public class LongRunningService extends Service implements SensorEventListener{
         if(intent!=null){
             newFloor = intent.getExtras().getString("floor");
             newAddress = intent.getExtras().getString("address");
+            newSensorTypes =  (HashMap<Integer, String>)intent.getSerializableExtra("sensorMap");
+            if(newSensorTypes!=null){
+                sensorTypes = newSensorTypes;
+            }
+            //初始化sensorData
+            if(sensorData==null||sensorData.size()==0){
+                for(Map.Entry entry:sensorTypes.entrySet()){
+                    values = new Float[4];
+                    values[0] = Float.valueOf((int)entry.getKey());
+                    sensorData.put((String)entry.getValue(),values);
+                }
+            }
+
+
             if(null!= newAddress){
                 if(!newAddress.equals(address)){
                     address = newAddress;
@@ -227,7 +256,12 @@ public class LongRunningService extends Service implements SensorEventListener{
         getWeather();
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),SensorManager.SENSOR_DELAY_NORMAL);
+        if(sensorTypes!=null){
+            for(Integer key : sensorTypes.keySet()){
+                sensorManager.registerListener(this,sensorManager.getDefaultSensor(key),SensorManager.SENSOR_DELAY_NORMAL);
+            }
+        }
+        /*sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),SensorManager.SENSOR_DELAY_NORMAL);
@@ -238,12 +272,12 @@ public class LongRunningService extends Service implements SensorEventListener{
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),SensorManager.SENSOR_DELAY_NORMAL);*/
         List<SensorData> sensorDataList = new ArrayList<>();
         //看本地有没有上次没有发送的数据
         dbHelper = new DBHelper(getApplicationContext());
         sensorDataList = dbHelper.getAllSensorData();
-        SensorData sensorData = new SensorData();
+        /*SensorData sensorData = new SensorData();
         sensorData.setAccelerometer_datax(accelerometer_datax);
         sensorData.setAccelerometer_datay(accelerometer_datay);
         sensorData.setAccelerometer_dataz(accelerometer_dataz);
@@ -267,28 +301,32 @@ public class LongRunningService extends Service implements SensorEventListener{
         sensorData.setRotation_vector_dataz(rotation_vector_dataz);
         sensorData.setHumidity_data(humidity_data);
         sensorData.setGyroscope_data(gyroscope_data);
-        sensorData.setStep_counter_data(step_counter_data);
+        sensorData.setStep_counter_data(step_counter_data);*/
         if("".equals(address)){
             address=sp.getString("address","");
         }
-        sensorData.setAddress(address);
-        sensorData.setWeather(weather);
-        sensorData.setAltitude(altitude);
+        TransSensorData.put("address",address);
+        TransSensorData.put("weather",weather);
+        TransSensorData.put("altitude",altitude);
+        TransSensorData.put("longitude",longitude);
+        TransSensorData.put("latitude",latitude);
         if("".equals(floor)){
             floor=sp.getString("floor","");
         }
-        sensorData.setFloor(floor);
-        sensorData.setPhone_model(phone_model);
-        sensorData.setDevice_brand(device_brand);
-        sensorData.setAndroid_version(android_version);
+        TransSensorData.put("floor",floor);
+        TransSensorData.put("phone_model",phone_model);
+        TransSensorData.put("device_brand",device_brand);
+        TransSensorData.put("android_version",android_version);
+        TransSensorData.put("flag",flag);
         create_time = TimeUtils.getTime();
-        sensorData.setCreate_time(create_time);
-        sensorDataList.add(sensorData);
+        TransSensorData.put("create_time",create_time);
+        TransSensorData.put("sensorData",sensorData);
+        //sensorDataList.add(sensorData);
         client = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)       //设置连接超时时间
                 .readTimeout(20, TimeUnit.SECONDS)      //设置读取超时时间
                 .build();
-        requestBody = RequestBody.create(mediaType, JSON.toJSONString(sensorDataList));
+        requestBody = RequestBody.create(mediaType, JSON.toJSONString(TransSensorData));
         request = new Request.Builder()
                 .url(SERVICE_URL)
                 .post(requestBody)
@@ -297,61 +335,22 @@ public class LongRunningService extends Service implements SensorEventListener{
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                dbHelper.insertSensorData(sensorData);
+                //dbHelper.insertSensorData(sensorData);
                 Log.d(TAG, "失败1: " + e.getMessage());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if(response.isSuccessful()){
-                    dbHelper.deleteALLSensorData();
+                    //dbHelper.deleteALLSensorData();
                     Log.d(TAG, "成功: " + response);
                 }else{
-                    dbHelper.insertSensorData(sensorData);
+                    //dbHelper.insertSensorData(sensorData);
                     Log.d(TAG, "失败2: " + response);
                 }
             }
         });
-        /*params.put("accelerometer_datax",accelerometer_datax);
-        params.put("accelerometer_datay",accelerometer_datay);
-        params.put("accelerometer_dataz",accelerometer_dataz);
-        params.put("latitude",latitude);
-        params.put("longitude",longitude);
-        params.put("light_data",light_data);
-        params.put("temperature_data",temperature_data);
-        params.put("magnetic_datax",magnetic_datax);
-        params.put("magnetic_datay",magnetic_datay);
-        params.put("magnetic_dataz",magnetic_dataz);
-        params.put("pressure_data",pressure_data);
-        params.put("proximity_data",proximity_data);
-        params.put("gravity_datax",gravity_datax);
-        params.put("gravity_datay",gravity_datay);
-        params.put("gravity_dataz",gravity_dataz);
-        params.put("linear_acceleration_datax",linear_acceleration_datax);
-        params.put("linear_acceleration_datay",linear_acceleration_datay);
-        params.put("linear_acceleration_dataz",linear_acceleration_dataz);
-        params.put("rotation_vector_datax",rotation_vector_datax);
-        params.put("rotation_vector_datay",rotation_vector_datay);
-        params.put("rotation_vector_dataz",rotation_vector_dataz);
-        params.put("humidity_data",humidity_data);
-        params.put("gyroscope_data",gyroscope_data);
-        params.put("step_counter_data",step_counter_data);
-        params.put("address",sp.getString("address",null));
-        params.put("weather",weather);
-        params.put("altitude",altitude);
-        params.put("floor",floor);
-        params.put("phone_model",phone_model);
-        client.post(SERVICE_URL, params, new AsyncHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
 
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                    Log.i("数据发送","error code:",error);
-            }
-        });*/
         AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);
         int anHour = 2*1000;       //每2秒发送一次数据
         long triggerAtTime = SystemClock.elapsedRealtime() + anHour;
@@ -370,12 +369,34 @@ public class LongRunningService extends Service implements SensorEventListener{
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
-            accelerometer_datax = event.values[0];
-            accelerometer_datay = event.values[1];
-            accelerometer_dataz = event.values[2];
+        int type =  event.sensor.getType();
+        if(null!=sensorTypes){
+            if(null!= sensorTypes.get(type)){
+                flag = true;
+                //有些传感器的值不仅仅只有三个，如果多于三个，我们采取前三个进行采集
+                int length = event.values.length;
+                if(length>3){
+                    length = 3;
+                }
+                values = new Float[length+1];
+                if(event.values.length==1){
+                    values[0] = Float.valueOf(type);
+                    values[1] = Float.valueOf(event.values[0])==null?0:event.values[0];
+                }else if(event.values.length==2){
+                    values[0] = Float.valueOf(type);
+                    values[1] = Float.valueOf(event.values[0])==null?0:event.values[0];
+                    values[2] = Float.valueOf(event.values[1])==null?0:event.values[1];
+                }else{
+                    values[0] = Float.valueOf(type);
+                    values[1] = Float.valueOf(event.values[0])==null?0:event.values[0];
+                    values[2] = Float.valueOf(event.values[1])==null?0:event.values[1];
+                    values[3] = Float.valueOf(event.values[2])==null?0:event.values[2];
+                }
+                sensorData.put(sensorTypes.get(type),values);
+            }
         }
-        if(event.sensor.getType() == Sensor.TYPE_LIGHT){                                      //光传感器
+
+        /*if(event.sensor.getType() == Sensor.TYPE_LIGHT){                                      //光传感器
             light_data = event.values[0];
         }
         if(event.sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE){                        //温度传感器
@@ -415,7 +436,7 @@ public class LongRunningService extends Service implements SensorEventListener{
         }
         if(event.sensor.getType() == Sensor.TYPE_STEP_COUNTER){                               //计步传感器
             step_counter_data = event.values[0];
-        }
+        }*/
     }
 
     @Override

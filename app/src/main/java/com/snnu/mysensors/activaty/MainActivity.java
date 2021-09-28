@@ -32,8 +32,11 @@ import com.snnu.mysensors.R;
 import com.snnu.mysensors.db.DBHelper;
 import com.snnu.mysensors.service.LongRunningService;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private SensorManager sm;
@@ -46,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String address = "";
     private String floor = "";
     private DBHelper dbHelper;
+    private Map<Integer,String> sensorMap= new HashMap<Integer,String>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +109,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         StringBuilder sb = new StringBuilder();
         sb.append("此手机有"+allSensors.size()+"个传感器，分别有：\n\n");
         for(Sensor s:allSensors){
+
             switch (s.getType()){
                 case Sensor.TYPE_ACCELEROMETER:
                     sb.append(s.getType()+"加速度传感器(Accelerometer sensor)"+"\n");
@@ -195,6 +200,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     break;
             }
             sb.append("设备名称："+s.getName()+"\n 设备版本："+s.getVersion()+"\n 供应商："+s.getVendor()+"\n\n");
+            sensorMap.put(s.getType(),s.getName());
         }
         txt_show.setText(sb.toString());
     }
@@ -327,6 +333,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                                 Intent intent = new Intent(MainActivity.this,LongRunningService.class);
                                                 intent.putExtra("address",address);
                                                 intent.putExtra("floor",floor);
+                                                intent.putExtra("sensorMap",(Serializable) sensorMap);
                                                 startService(intent);
                                             }
                                         })
