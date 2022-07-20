@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private final int REQUEST_GPS = 1;
     private AlertDialog dialog = null;
     private AlertDialog.Builder builder = null;
-    private final String[] addresses = {"教室","实验室","宿舍","图书馆","食堂","体育馆","户外","超市","体育场"};
+    private final String[] addresses = {"教室","实验室","宿舍","图书馆","食堂","体育馆","户外","超市","体育场","校车","火车","飞机场","火车站","大巴","出租车","候机厅","地铁"};
     private String address = "";
     private String floor = "";
     private DBHelper dbHelper;

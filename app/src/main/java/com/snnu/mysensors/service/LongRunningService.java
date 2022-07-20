@@ -48,8 +48,10 @@ import com.snnu.mysensors.utils.TimeUtils;
 import java.io.Console;
 import java.io.IOException;
 import java.sql.Time;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,12 +86,13 @@ public class LongRunningService extends Service implements SensorEventListener{
     private String newAddress=null;
     private String address="";
     private Handler handler;
+    private String userName;
 
     private SensorManager sensorManager;
     //阿里云地址
-    private static final String SERVICE_URL = "http://120.26.199.60:8080/saveSensorDataList";
+    //private static final String SERVICE_URL = "http://120.26.199.60:8080/saveSensorDataList";
     //本机地址
-    //private static final String SERVICE_URL = "http://10.150.98.196:8080/saveSensorDataList";
+    private static final String SERVICE_URL = "http://10.150.98.196:8080/saveSensorDataList";
     private RequestBody requestBody;
     private OkHttpClient client ;
     private Request request;
@@ -142,6 +145,9 @@ public class LongRunningService extends Service implements SensorEventListener{
     //计步传感器值
     private float step_counter_data = 0;
     private String create_time;
+    private  Date startTime;
+    //允许15分钟数据采集
+    private static final Long allowUse = 2*60*1000l;
 
     private Map<Integer, String> sensorTypes = new HashMap<>();
     private Map<Integer,String> newSensorTypes = new HashMap<>();
@@ -164,7 +170,7 @@ public class LongRunningService extends Service implements SensorEventListener{
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        sp = getSharedPreferences("addressInfo", Context.MODE_PRIVATE);
+        sp = getSharedPreferences("mySharedPreferences", Context.MODE_PRIVATE);
         editor = sp.edit();
         if(intent!=null){
             newFloor = intent.getExtras().getString("floor");
@@ -273,10 +279,10 @@ public class LongRunningService extends Service implements SensorEventListener{
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),SensorManager.SENSOR_DELAY_NORMAL);*/
-        List<SensorData> sensorDataList = new ArrayList<>();
+        List<SensorData> DBSensorData = new ArrayList<>();
         //看本地有没有上次没有发送的数据
         dbHelper = new DBHelper(getApplicationContext());
-        sensorDataList = dbHelper.getAllSensorData();
+        DBSensorData = dbHelper.getAllSensorData();
         /*SensorData sensorData = new SensorData();
         sensorData.setAccelerometer_datax(accelerometer_datax);
         sensorData.setAccelerometer_datay(accelerometer_datay);
@@ -305,6 +311,8 @@ public class LongRunningService extends Service implements SensorEventListener{
         if("".equals(address)){
             address=sp.getString("address","");
         }
+        userName = sp.getString("userName","");
+        TransSensorData.put("userName",userName);
         TransSensorData.put("address",address);
         TransSensorData.put("weather",weather);
         TransSensorData.put("altitude",altitude);
@@ -318,9 +326,14 @@ public class LongRunningService extends Service implements SensorEventListener{
         TransSensorData.put("device_brand",device_brand);
         TransSensorData.put("android_version",android_version);
         TransSensorData.put("flag",flag);
-        create_time = TimeUtils.getTime();
+        create_time = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss").format(new Date());
+        if(null==startTime){
+            startTime = new Date();
+        }
         TransSensorData.put("create_time",create_time);
         TransSensorData.put("sensorData",sensorData);
+        //将缓存在本地的数据发送到服务器
+        //TransSensorData.put("DBSensorData",DBSensorData);
         //sensorDataList.add(sensorData);
         client = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)       //设置连接超时时间
@@ -335,7 +348,7 @@ public class LongRunningService extends Service implements SensorEventListener{
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                //dbHelper.insertSensorData(sensorData);
+                //dbHelper.insertSensorData(TransSensorData);
                 Log.d(TAG, "失败1: " + e.getMessage());
             }
 
@@ -343,9 +356,11 @@ public class LongRunningService extends Service implements SensorEventListener{
             public void onResponse(Call call, Response response) throws IOException {
                 if(response.isSuccessful()){
                     //dbHelper.deleteALLSensorData();
+                    String responseStr = response.body().string();
+                    System.out.println("response body string:" + responseStr);
                     Log.d(TAG, "成功: " + response);
                 }else{
-                    //dbHelper.insertSensorData(sensorData);
+                    //dbHelper.insertSensorData(TransSensorData);
                     Log.d(TAG, "失败2: " + response);
                 }
             }
@@ -363,6 +378,9 @@ public class LongRunningService extends Service implements SensorEventListener{
             manager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime, pi);
         } else {
             manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime, pi);
+        }
+        if(new Date().getTime()-startTime.getTime()>allowUse){
+            manager.cancel(pi);
         }
         //manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerAtTime,pi);
     }

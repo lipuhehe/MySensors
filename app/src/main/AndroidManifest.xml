@@ -39,13 +39,14 @@
             android:name="com.baidu.lbsapi.API_KEY"
             android:value="GapGhw26yu2756iu1iZOiWpNwChBbWyg">
         </meta-data>
-        <activity android:name=".activaty.MainActivity">
+        <activity android:name=".activaty.LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".activaty.MainActivity"/>
 
         <service android:name="com.baidu.location.f" android:enabled="true" android:process=":remote"> </service>
         <service android:name=".service.LongRunningService"></service>

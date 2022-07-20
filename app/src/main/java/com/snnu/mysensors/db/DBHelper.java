@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 import com.snnu.mysensors.model.SensorData;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 public class DBHelper extends SQLiteOpenHelper{
     private static final int DATABASE_VERSION = 1;
@@ -29,37 +30,22 @@ public class DBHelper extends SQLiteOpenHelper{
 
         sqLiteDatabase.execSQL("create table if not exists sensor_data "+
                         "(id integer primary key autoincrement,"+
-                "accelerometer_datax float  DEFAULT NULL, " +
-                "accelerometer_datay float  DEFAULT NULL," +
-                "accelerometer_dataz float  DEFAULT NULL," +
+                "code float  DEFAULT NULL, " +
+                "sensor_name varchar(255)  DEFAULT NULL," +
+                "sensor_type integer  DEFAULT NULL," +
+                "sensor_value1 double  DEFAULT NULL," +
+                "sensor_value2 double  DEFAULT NULL," +
+                "sensor_value3 double  DEFAULT NULL," +
+                "create_time varchar(255)   DEFAULT NULL," +
                 "address varchar(255)  DEFAULT NULL," +
+                "floor varchar(10)  DEFAULT NULL," +
                 "altitude double  DEFAULT NULL," +
-                "create_time varchar(255) DEFAULT NULL," +
-                "floor varchar(255)   DEFAULT NULL," +
-                "gravity_datax float  DEFAULT NULL," +
-                "gravity_datay float  DEFAULT NULL," +
-                "gravity_dataz float  DEFAULT NULL," +
-                "gyroscope_data float  DEFAULT NULL," +
-                "humidity_data float  DEFAULT NULL," +
-                "latitude double  DEFAULT NULL," +
-                "light_data float  DEFAULT NULL," +
-                "linear_acceleration_datax float  DEFAULT NULL," +
-                "linear_acceleration_datay float  DEFAULT NULL," +
-                "linear_acceleration_dataz float  DEFAULT NULL," +
                 "longitude double  DEFAULT NULL," +
-                "magnetic_datax float  DEFAULT NULL," +
-                "magnetic_datay float  DEFAULT NULL," +
-                "magnetic_dataz float  DEFAULT NULL," +
-                "phone_model varchar(255)  DEFAULT NULL," +
-                "device_brand varchar(255)  DEFAULT NULL," +
-                "android_version varchar(255)  DEFAULT NULL," +
-                "pressure_data float  DEFAULT NULL," +
-                "proximity_data float  DEFAULT NULL," +
-                "rotation_vector_datax float  DEFAULT NULL," +
-                "rotation_vector_datay float  DEFAULT NULL," +
-                "rotation_vector_dataz float  DEFAULT NULL," +
-                "step_counter_data float  DEFAULT NULL," +
-                "temperature_data float  DEFAULT NULL," +
+                "latitude double  DEFAULT NULL," +
+                "phone_model varchar(50)  DEFAULT NULL," +
+                "device_brand varchar(50)  DEFAULT NULL," +
+                "android_version varchar(50)  DEFAULT NULL," +
+                "userName varchar(50)  DEFAULT NULL," +
                 "weather varchar(255) DEFAULT NULL)");
 
 
@@ -71,41 +57,26 @@ public class DBHelper extends SQLiteOpenHelper{
         onCreate(sqLiteDatabase);
     }
 
-    public long insertSensorData(SensorData sensorData){
+    public long insertSensorData(Map<String,Object> sensorData){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put("accelerometer_datax",sensorData.getAccelerometer_datax());
-        values.put("accelerometer_datay",sensorData.getAccelerometer_datay());
-        values.put("accelerometer_dataz",sensorData.getAccelerometer_dataz());
-        values.put("latitude",sensorData.getAltitude());
-        values.put("longitude",sensorData.getLongitude());
-        values.put("light_data",sensorData.getLight_data());
-        values.put("temperature_data",sensorData.getTemperature_data());
-        values.put("magnetic_datax",sensorData.getMagnetic_datax());
-        values.put("magnetic_datay",sensorData.getMagnetic_datay());
-        values.put("magnetic_dataz",sensorData.getMagnetic_dataz());
-        values.put("pressure_data",sensorData.getPressure_data());
-        values.put("proximity_data",sensorData.getProximity_data());
-        values.put("gravity_datax",sensorData.getGravity_datax());
-        values.put("gravity_datay",sensorData.getGravity_datay());
-        values.put("gravity_dataz",sensorData.getGravity_dataz());
-        values.put("linear_acceleration_datax",sensorData.getAccelerometer_dataz());
-        values.put("linear_acceleration_datay",sensorData.getAccelerometer_datay());
-        values.put("linear_acceleration_dataz",sensorData.getAccelerometer_dataz());
-        values.put("rotation_vector_datax",sensorData.getRotation_vector_datax());
-        values.put("rotation_vector_datay",sensorData.getRotation_vector_datay());
-        values.put("rotation_vector_dataz",sensorData.getAccelerometer_dataz());
-        values.put("humidity_data",sensorData.getHumidity_data());
-        values.put("gyroscope_data",sensorData.getGyroscope_data());
-        values.put("step_counter_data",sensorData.getStep_counter_data());
-        values.put("address",sensorData.getAddress());
-        values.put("weather",sensorData.getWeather());
-        values.put("altitude",sensorData.getAltitude());
-        values.put("floor",sensorData.getFloor());
-        values.put("create_time",sensorData.getCreate_time());
-        values.put("phone_model",sensorData.getPhone_model());
-        values.put("device_brand",sensorData.getDevice_brand());
-        values.put("android_version",sensorData.getAndroid_version());
+        values.put("code",(String)sensorData.get("code"));
+        values.put("sensor_name",(String)sensorData.get("sensor_name"));
+        values.put("sensor_type",(String)sensorData.get("sensor_type"));
+        values.put("sensor_value1",(double)sensorData.get("sensor_value1"));
+        values.put("sensor_value2",(double)sensorData.get("sensor_value2"));
+        values.put("sensor_value3",(double)sensorData.get("sensor_value3"));
+        values.put("create_time",(String)sensorData.get("create_time"));
+        values.put("address",(String)sensorData.get("address"));
+        values.put("floor",(String)sensorData.get("floor"));
+        values.put("altitude",(double)sensorData.get("altitude"));
+        values.put("longitude",(double)sensorData.get("longitude"));
+        values.put("latitude",(double)sensorData.get("latitude"));
+        values.put("phone_model",(String)sensorData.get("phone_model"));
+        values.put("device_brand",(String)sensorData.get("device_brand"));
+        values.put("android_version",(String)sensorData.get("android_version"));
+        values.put("userName",(String)sensorData.get("userName"));
+        values.put("weather",(String)sensorData.get("weather"));
         long id = db.insert("sensor_data",null,values);
         db.close();
         return id;
@@ -119,36 +90,23 @@ public class DBHelper extends SQLiteOpenHelper{
         if(cursor!=null){
            while(cursor.moveToNext()){
                SensorData sensorData = new SensorData();
-               sensorData.setAccelerometer_datax(cursor.getFloat(cursor.getColumnIndex(SensorData.ACCELEROMETER_DATAX)));
-               sensorData.setAccelerometer_datay(cursor.getFloat(cursor.getColumnIndex(SensorData.ACCELEROMETER_DATAY)));
-               sensorData.setAccelerometer_dataz(cursor.getFloat(cursor.getColumnIndex(SensorData.ACCELEROMETER_DATAZ)));
-               sensorData.setAltitude(cursor.getFloat(cursor.getColumnIndex(SensorData.ALTITUDE)));
-               sensorData.setLongitude(cursor.getFloat(cursor.getColumnIndex(SensorData.LONGITUDE)));
-               sensorData.setTemperature_data(cursor.getFloat(cursor.getColumnIndex(SensorData.TEMPERATURE_DATA)));
-               sensorData.setLight_data(cursor.getFloat(cursor.getColumnIndex(SensorData.LIGHT_DATA)));
-               sensorData.setMagnetic_datax(cursor.getFloat(cursor.getColumnIndex(SensorData.MAGNETIC_DATAX)));
-               sensorData.setMagnetic_datay(cursor.getFloat(cursor.getColumnIndex(SensorData.MAGNETIC_DATAY)));
-               sensorData.setMagnetic_dataz(cursor.getFloat(cursor.getColumnIndex(SensorData.MAGNETIC_DATAZ)));
-               sensorData.setPressure_data(cursor.getFloat(cursor.getColumnIndex(SensorData.PRESSURE_DATA)));
-               sensorData.setProximity_data(cursor.getFloat(cursor.getColumnIndex(SensorData.PROXIMITY_DATA)));
-               sensorData.setGravity_datax(cursor.getFloat(cursor.getColumnIndex(SensorData.GRAVITY_DATAX)));
-               sensorData.setGravity_datay(cursor.getFloat(cursor.getColumnIndex(SensorData.GRAVITY_DATAY)));
-               sensorData.setGravity_dataz(cursor.getFloat(cursor.getColumnIndex(SensorData.GRAVITY_DATAZ)));
-               sensorData.setLinear_acceleration_datax(cursor.getFloat(cursor.getColumnIndex(SensorData.LINEAR_ACCELERATION_DATAX)));
-               sensorData.setLinear_acceleration_datay(cursor.getFloat(cursor.getColumnIndex(SensorData.LINEAR_ACCELERATION_DATAY)));
-               sensorData.setLinear_acceleration_dataz(cursor.getFloat(cursor.getColumnIndex(SensorData.LINEAR_ACCELERATION_DATAZ)));
-               sensorData.setRotation_vector_datax(cursor.getFloat(cursor.getColumnIndex(SensorData.ROTATION_VECTOR_DATAX)));
-               sensorData.setRotation_vector_datay(cursor.getFloat(cursor.getColumnIndex(SensorData.ROTATION_VECTOR_DATAY)));
-               sensorData.setRotation_vector_dataz(cursor.getFloat(cursor.getColumnIndex(SensorData.ROTATION_VECTOR_DATAZ)));
-               sensorData.setHumidity_data(cursor.getFloat(cursor.getColumnIndex(SensorData.HUMIDITY_DATA)));
-               sensorData.setGyroscope_data(cursor.getFloat(cursor.getColumnIndex(SensorData.GYROSCOPE_DATA)));
-               sensorData.setStep_counter_data(cursor.getColumnIndex(SensorData.STEP_COUNT_DATA));
+               sensorData.setCode(cursor.getString(cursor.getColumnIndex(SensorData.CODE)));
+               sensorData.setSensor_name(cursor.getString(cursor.getColumnIndex(SensorData.SENSOR_NAME)));
+               sensorData.setSensor_type(cursor.getInt(cursor.getColumnIndex(SensorData.SENSOR_TYPE)));
+               sensorData.setSensor_value1(cursor.getDouble(cursor.getColumnIndex(SensorData.SENSOR_VALUE1)));
+               sensorData.setSensor_value2(cursor.getDouble(cursor.getColumnIndex(SensorData.SENSOR_VALUE2)));
+               sensorData.setSensor_value3(cursor.getDouble(cursor.getColumnIndex(SensorData.SENSOR_VALUE3)));
+               sensorData.setCreate_time(cursor.getString(cursor.getColumnIndex(SensorData.CREATE_TIME)));
                sensorData.setAddress(cursor.getString(cursor.getColumnIndex(SensorData.ADDRESS)));
-               sensorData.setWeather(cursor.getString(cursor.getColumnIndex(SensorData.WEATHER)));
                sensorData.setFloor(cursor.getString(cursor.getColumnIndex(SensorData.FLOOR)));
+               sensorData.setAltitude(cursor.getDouble(cursor.getColumnIndex(SensorData.ALTITUDE)));
+               sensorData.setLongitude(cursor.getDouble(cursor.getColumnIndex(SensorData.LONGITUDE)));
+               sensorData.setLatitude(cursor.getDouble(cursor.getColumnIndex(SensorData.LATITUDE)));
                sensorData.setPhone_model(cursor.getString(cursor.getColumnIndex(SensorData.PHONE_MODEL)));
                sensorData.setDevice_brand(cursor.getString(cursor.getColumnIndex(SensorData.DEVICE_BRAND)));
                sensorData.setAndroid_version(cursor.getString(cursor.getColumnIndex(SensorData.ANDROID_VERSION)));
+               sensorData.setUserName(cursor.getString(cursor.getColumnIndex(SensorData.USERNAME)));
+               sensorData.setWeather(cursor.getString(cursor.getColumnIndex(SensorData.WEATHER)));
                sensorDataList.add(sensorData);
            }
         }
